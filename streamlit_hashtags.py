@@ -4,6 +4,7 @@ import sqlite3
 import datetime
 
 def show_hashtags():
+    # Helper function to format numbers (K, M)
     def format_number(n):
         try:
             if pd.isna(n) or n == "":
@@ -21,7 +22,7 @@ def show_hashtags():
     st.markdown("### <u>Hashtags Dashboard</u>", unsafe_allow_html=True)
 
     # === Connect to SQLite DB ===
-    db_path = r"C:\Users\USER\Documents\Tunetouch\Code\Tiktok\testing\database\tiktokdb.db"
+    db_path = "database/tiktokdb.db"
     conn = sqlite3.connect(db_path)
 
     # Get min and max date from database
@@ -37,7 +38,7 @@ def show_hashtags():
     max_date = datetime.datetime.strptime(minmax_df["max_date"].iloc[0], "%Y-%m-%d").date()
 
     # === Select one crawl_date ===
-    query_dates = f"SELECT DISTINCT crawl_date FROM hashtags ORDER BY crawl_date"
+    query_dates = "SELECT DISTINCT crawl_date FROM hashtags ORDER BY crawl_date"
     dates_df = pd.read_sql(query_dates, conn)
     available_dates = [datetime.datetime.strptime(d, "%Y-%m-%d").date() for d in dates_df["crawl_date"].tolist()]
 
@@ -50,11 +51,13 @@ def show_hashtags():
     )
 
     # Query hashtags for selected date
-    query = f"""
-    SELECT * FROM hashtags
-    WHERE crawl_date = '{selected_date}'
-    """
+    query = f"SELECT * FROM hashtags WHERE crawl_date = '{selected_date}'"
     df = pd.read_sql(query, conn)
+
+    # Query hashtags for previous day
+    prev_date = selected_date - datetime.timedelta(days=1)
+    query_prev = f"SELECT * FROM hashtags WHERE crawl_date = '{prev_date}'"
+    df_prev = pd.read_sql(query_prev, conn)
     conn.close()
 
     if df.empty:
@@ -68,15 +71,27 @@ def show_hashtags():
     df['video_views_dis'] = df['video_views'].apply(format_number)
     df['publish_count_dis'] = df['publish_count'].apply(format_number)
 
-    # === KPI Overview ===
+    # === KPI Overview without Top Hashtag ===
     st.subheader("Overall Metrics")
+
+    # Current day metrics
     total_views = df['video_views'].sum()
     total_hashtags = df['hashtag_name'].nunique()
     total_posts = df['publish_count'].sum()
+
+    # Previous day metrics
+    if not df_prev.empty:
+        prev_total_views = df_prev['video_views'].sum()
+        prev_total_hashtags = df_prev['hashtag_name'].nunique()
+        prev_total_posts = df_prev['publish_count'].sum()
+    else:
+        prev_total_views = prev_total_hashtags = prev_total_posts = 0
+
+    # Display metrics (without Top Hashtag)
     col1, col2, col3 = st.columns(3)
-    col1.metric("Total Hashtag Views", format_number(total_views))
-    col2.metric("Unique Hashtags", total_hashtags)
-    col3.metric("Total Posts", format_number(total_posts))
+    col1.metric("Total Hashtag Views", format_number(total_views), delta=format_number(total_views - prev_total_views))
+    col2.metric("Unique Hashtags", total_hashtags, delta=total_hashtags - prev_total_hashtags)
+    col3.metric("Total Posts", format_number(total_posts), delta=format_number(total_posts - prev_total_posts))
 
     # === Top Hashtags by Views ===
     st.subheader("Top 20 Hashtags by Views")
@@ -140,7 +155,6 @@ def show_hashtags():
 
     # === Full Dataset Display ===
     st.subheader("All Data from DB")
-
     industries_all = [i for i in df["industry_value"].dropna().unique() if i != ""]
     selected_industry_all = st.selectbox("Select Industry (All Data)", ["All"] + industries_all, key="hashtags_all_industry")
 

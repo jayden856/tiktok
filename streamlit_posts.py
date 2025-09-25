@@ -5,6 +5,7 @@ import sqlite3
 import datetime
 
 def show_posts():
+    # Helper function to format numbers (K, M)
     def format_number(n):
         try:
             if pd.isna(n):
@@ -22,7 +23,7 @@ def show_posts():
     st.markdown("### <u>Posts Dashboard</u>", unsafe_allow_html=True)
 
     # === Connect to SQLite DB and get available date range ===
-    db_path = r"C:\Users\USER\Documents\Tunetouch\Code\Tiktok\testing\database\tiktokdb.db"
+    db_path = "database/tiktokdb.db"
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("SELECT MIN(crawl_date), MAX(crawl_date) FROM posts")
@@ -42,13 +43,11 @@ def show_posts():
         key="posts_date"
     )
 
-    # === Query posts table for selected date ===
+    # === Query posts table for selected date and previous day ===
     conn = sqlite3.connect(db_path)
-    query = f"""
-    SELECT * FROM posts
-    WHERE crawl_date = '{selected_date}'
-    """
-    df = pd.read_sql(query, conn)
+    df = pd.read_sql(f"SELECT * FROM posts WHERE crawl_date = '{selected_date}'", conn)
+    prev_date = pd.to_datetime(selected_date) - pd.Timedelta(days=1)
+    df_prev = pd.read_sql(f"SELECT * FROM posts WHERE crawl_date = '{prev_date.date()}'", conn)
     conn.close()
 
     if df.empty:
@@ -59,18 +58,55 @@ def show_posts():
     df['play_count_dis'] = df['play_count'].apply(format_number)
     df['like_count_dis'] = df['like_count'].apply(format_number)
 
-    # === KPI Overview ===
+    # === KPI Overview with delta compared to previous day ===
     st.subheader("Overall Metrics")
+
+    # Current metrics
     total_plays = df['play_count'].sum()
     total_likes = df['like_count'].sum()
     total_videos = len(df)
     avg_engagement = (df['like_count'] / df['play_count']).mean()
 
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Plays", format_number(total_plays))
-    col2.metric("Total Likes", format_number(total_likes))
-    col3.metric("Total Videos", total_videos)
-    col4.metric("Avg Engagement Rate", f"{avg_engagement:.2%}")
+    # Previous day metrics
+    if not df_prev.empty:
+        prev_total_plays = df_prev['play_count'].sum()
+        prev_total_likes = df_prev['like_count'].sum()
+        prev_total_videos = len(df_prev)
+        prev_avg_engagement = (df_prev['like_count'] / df_prev['play_count']).mean()
+    else:
+        prev_total_plays = prev_total_likes = prev_total_videos = prev_avg_engagement = 0
+
+    # === Top Creator ===
+    top_creator_row = df.groupby("nickname")["play_count"].sum().sort_values(ascending=False)
+    top_creator_name = top_creator_row.index[0]
+    top_creator_plays = top_creator_row.iloc[0]
+
+    # Previous day Top Creator plays
+    if not df_prev.empty and top_creator_name in df_prev["nickname"].values:
+        prev_top_creator_plays = df_prev.groupby("nickname")["play_count"].sum().get(top_creator_name, 0)
+    else:
+        prev_top_creator_plays = 0
+
+    # === Top Genre ===
+    top_genre_row = df.groupby("genre")["play_count"].sum().sort_values(ascending=False)
+    top_genre_name = top_genre_row.index[0]
+    top_genre_plays = top_genre_row.iloc[0]
+
+    # Previous day Top Genre plays
+    if not df_prev.empty and top_genre_name in df_prev["genre"].values:
+        prev_top_genre_plays = df_prev.groupby("genre")["play_count"].sum().get(top_genre_name, 0)
+    else:
+        prev_top_genre_plays = 0
+
+    # Display KPIs
+    col0, col1, col2, col3, col4, col5 = st.columns(6)
+    col0.metric("Top Creator", top_creator_name, delta=format_number(top_creator_plays - prev_top_creator_plays))
+    col1.metric("Top Creator Plays", format_number(top_creator_plays), delta=format_number(top_creator_plays - prev_top_creator_plays))
+    col2.metric("Top Genre", top_genre_name, delta=format_number(top_genre_plays - prev_top_genre_plays))
+    col3.metric("Top Genre Plays", format_number(top_genre_plays), delta=format_number(top_genre_plays - prev_top_genre_plays))
+    col4.metric("Total Plays", format_number(total_plays), delta=format_number(total_plays - prev_total_plays))
+    col5.metric("Total Likes", format_number(total_likes), delta=format_number(total_likes - prev_total_likes))
+    # Optional: add more KPIs as needed
 
     # === Required Columns Check ===
     required_cols = {'genre', 'play_count', 'like_count'}
@@ -97,7 +133,8 @@ def show_posts():
         use_container_width=True
     )
 
-    # === Chart Section ===
+    # === Charts & Remaining Sections ===
+    # Play count by genre
     st.subheader("Average Play Count by Genre")
     fig_play = px.bar(
         genre_avg,
@@ -109,6 +146,7 @@ def show_posts():
     )
     st.plotly_chart(fig_play, use_container_width=True)
 
+    # Like count by genre
     st.subheader("Average Like Count by Genre")
     fig_like = px.bar(
         genre_avg,
@@ -120,7 +158,7 @@ def show_posts():
     )
     st.plotly_chart(fig_like, use_container_width=True)
 
-    # === Engagement Rate Analysis ===
+    # Engagement Rate
     st.subheader("Engagement Rate by Genre")
     df["engagement_rate"] = df["like_count"] / df["play_count"]
     genre_engagement = df.groupby("genre")["engagement_rate"].mean().sort_values(ascending=False)
@@ -155,7 +193,6 @@ def show_posts():
     creator_stats = df_filtered.groupby("nickname")[["play_count","like_count"]].sum().reset_index()
     top_videos = top_videos.merge(creator_stats, on="nickname", suffixes=("", "_creator"))
 
-    # Format display columns
     top_videos["play_count_dis"] = top_videos["play_count"].apply(format_number)
     top_videos["like_count_dis"] = top_videos["like_count"].apply(format_number)
     top_videos["play_count_creator_dis"] = top_videos["play_count_creator"].apply(format_number)
@@ -186,7 +223,7 @@ def show_posts():
         use_container_width=True
     )
 
-    # === Correlation Scatter Plot ===
+    # Correlation scatter plot
     st.subheader("Correlation: Video Plays vs Likes")
     fig_scatter = px.scatter(
         df_filtered,
@@ -198,7 +235,7 @@ def show_posts():
     )
     st.plotly_chart(fig_scatter, use_container_width=True)
 
-    # === Display All Data from DB ===
+    # All Data Table
     st.subheader("All Data from DB")
     df_display = df.copy()
     df_display.insert(0, "No.", range(1, len(df_display) + 1))

@@ -22,7 +22,7 @@ def show_creators():
     st.markdown("### <u>Creators Dashboard</u>", unsafe_allow_html=True)
 
     # === Connect to SQLite DB and get available date range ===
-    db_path = r"C:\Users\USER\Documents\Tunetouch\Code\Tiktok\testing\database\tiktokdb.db"
+    db_path = "database/tiktokdb.db"
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("SELECT MIN(crawl_date), MAX(crawl_date) FROM creators")
@@ -49,6 +49,14 @@ def show_creators():
     WHERE crawl_date = '{selected_date}'
     """
     df = pd.read_sql(query, conn)
+
+    # === Query creators table for previous day ===
+    prev_date = pd.to_datetime(selected_date) - pd.Timedelta(days=1)
+    query_prev = f"""
+    SELECT * FROM creators
+    WHERE crawl_date = '{prev_date.date()}'
+    """
+    df_prev = pd.read_sql(query_prev, conn)
     conn.close()
 
     if df.empty:
@@ -73,6 +81,7 @@ def show_creators():
     # ============ KPI Overview ============
     st.subheader("Overall Metrics")
 
+    # Current metrics
     total_creators = df["user_id"].nunique()
     total_followers = df.groupby("user_id")["follower_count"].max().sum()
     total_videos = df["video_item_id"].nunique()
@@ -80,13 +89,32 @@ def show_creators():
     total_likes = df["video_like_count"].sum()
     avg_engagement = (df["video_like_count"] / df["video_play_count"]).mean()
 
+    # Previous day metrics (if available)
+    if not df_prev.empty:
+        prev_total_creators = df_prev["user_id"].nunique()
+        prev_total_followers = df_prev.groupby("user_id")["follower_count"].max().sum()
+        prev_total_videos = df_prev["video_item_id"].nunique()
+        prev_total_views = df_prev["video_play_count"].sum()
+        prev_total_likes = df_prev["video_like_count"].sum()
+        prev_avg_engagement = (df_prev["video_like_count"] / df_prev["video_play_count"]).mean()
+    else:
+        prev_total_creators = prev_total_followers = prev_total_videos = prev_total_views = prev_total_likes = prev_avg_engagement = 0
+
+    # Top creator and video (display name only, delta only compares values)
     top_creator = (
         df.groupby(["user_id","nickname"])["follower_count"]
         .max().sort_values(ascending=False)
         .reset_index().iloc[0]
     )
     top_creator_name = top_creator["nickname"]
-    top_creator_followers = format_number(top_creator["follower_count"])
+    top_creator_followers = top_creator["follower_count"]
+    top_creator_followers_display = format_number(top_creator_followers)
+
+    # Previous day's top creator followers value
+    if not df_prev.empty:
+        prev_top_creator_followers = df_prev.groupby(["user_id"])["follower_count"].max().max()
+    else:
+        prev_top_creator_followers = 0
 
     top_video = (
         df.groupby(["video_item_id","nickname"])["video_play_count"]
@@ -94,19 +122,26 @@ def show_creators():
         .reset_index().iloc[0]
     )
     top_video_creator = top_video["nickname"]
-    top_video_views = format_number(top_video["video_play_count"])
+    top_video_views = top_video["video_play_count"]
+    top_video_views_display = format_number(top_video_views)
 
-    # Display KPI metrics
+    # Previous day's top video views value
+    if not df_prev.empty:
+        prev_top_video_views = df_prev.groupby(["video_item_id"])["video_play_count"].max().max()
+    else:
+        prev_top_video_views = 0
+
+    # Display KPI metrics (delta only for numeric values)
     kpi1, kpi2, kpi3 = st.columns(3)
-    kpi1.metric("Top Creator by Followers", f"{top_creator_name}", top_creator_followers)
-    kpi2.metric("Top Video by Views", f"{top_video_creator}", top_video_views)
-    kpi3.metric("Unique Creators", total_creators)
+    kpi1.metric("Top Creator by Followers", top_creator_name, delta=format_number(top_creator_followers - prev_top_creator_followers))
+    kpi2.metric("Top Video by Views", top_video_creator, delta=format_number(top_video_views - prev_top_video_views))
+    kpi3.metric("Unique Creators", total_creators, delta=total_creators - prev_total_creators)
 
     kpi4, kpi5, kpi6, kpi7 = st.columns(4)
-    kpi4.metric("Total Videos", total_videos)
-    kpi5.metric("Total Views", format_number(total_views))
-    kpi6.metric("Total Likes", format_number(total_likes))
-    kpi7.metric("Avg Engagement Rate", f"{avg_engagement:.2%}")
+    kpi4.metric("Total Videos", total_videos, delta=total_videos - prev_total_videos)
+    kpi5.metric("Total Views", format_number(total_views), delta=format_number(total_views - prev_total_views))
+    kpi6.metric("Total Likes", format_number(total_likes), delta=format_number(total_likes - prev_total_likes))
+    kpi7.metric("Avg Engagement Rate", f"{avg_engagement:.2%}", delta=f"{(avg_engagement - prev_avg_engagement):.2%}")
 
     # ============ Top Creators ============
     st.subheader("Top 20 Creators by Followers")
