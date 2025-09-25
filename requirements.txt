@@ -1,0 +1,10 @@
+streamlit
+pandas
+plotly
+sqlite3
+datetime
+requests
+json
+time
+csv
+os
