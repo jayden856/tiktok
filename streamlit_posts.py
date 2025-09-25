@@ -99,13 +99,17 @@ def show_posts():
         prev_top_genre_plays = 0
 
     # Display KPIs
-    col0, col1, col2, col3, col4, col5 = st.columns(6)
-    col0.metric("Top Creator", top_creator_name, delta=format_number(top_creator_plays - prev_top_creator_plays))
-    col1.metric("Top Creator Plays", format_number(top_creator_plays), delta=format_number(top_creator_plays - prev_top_creator_plays))
-    col2.metric("Top Genre", top_genre_name, delta=format_number(top_genre_plays - prev_top_genre_plays))
-    col3.metric("Top Genre Plays", format_number(top_genre_plays), delta=format_number(top_genre_plays - prev_top_genre_plays))
-    col4.metric("Total Plays", format_number(total_plays), delta=format_number(total_plays - prev_total_plays))
-    col5.metric("Total Likes", format_number(total_likes), delta=format_number(total_likes - prev_total_likes))
+    # First row: Top Creator & Top Genre
+    row1_col1, row1_col2, row1_col3 = st.columns(3)
+    row1_col1.metric("Top Creator", top_creator_name, delta=format_number(top_creator_plays - prev_top_creator_plays))
+    row1_col2.metric("Top Creator Plays", format_number(top_creator_plays), delta=format_number(top_creator_plays - prev_top_creator_plays))
+    row1_col3.metric("Top Genre", top_genre_name, delta=format_number(top_genre_plays - prev_top_genre_plays))
+
+    # Second row: Top Genre Plays & Total Plays & Total Likes
+    row2_col1, row2_col2, row2_col3 = st.columns(3)
+    row2_col1.metric("Top Genre Plays", format_number(top_genre_plays), delta=format_number(top_genre_plays - prev_top_genre_plays))
+    row2_col2.metric("Total Plays", format_number(total_plays), delta=format_number(total_plays - prev_total_plays))
+    row2_col3.metric("Total Likes", format_number(total_likes), delta=format_number(total_likes - prev_total_likes))
     # Optional: add more KPIs as needed
 
     # === Required Columns Check ===
