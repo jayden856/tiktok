@@ -46,7 +46,7 @@ def show_posts():
     # === Query posts table for selected date and previous day ===
     conn = sqlite3.connect(db_path)
     df = pd.read_sql(f"SELECT * FROM posts WHERE crawl_date = '{selected_date}'", conn)
-    df.drop_duplicates(subset=['item_id', 'crawl_date', 'crawl_time'], keep='first')
+    df.drop_duplicates(subset=['item_id'], keep='first')
     prev_date = pd.to_datetime(selected_date) - pd.Timedelta(days=1)
     df_prev = pd.read_sql(f"SELECT * FROM posts WHERE crawl_date = '{prev_date.date()}'", conn)
     conn.close()
