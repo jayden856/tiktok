@@ -50,6 +50,8 @@ def show_creators():
     """
     df = pd.read_sql(query, conn)
 
+    df = df.drop_duplicates(subset=["user_id", "video_item_id"], keep="first")
+
     # === Query creators table for previous day ===
     prev_date = pd.to_datetime(selected_date) - pd.Timedelta(days=1)
     query_prev = f"""
@@ -58,6 +60,8 @@ def show_creators():
     """
     df_prev = pd.read_sql(query_prev, conn)
     conn.close()
+
+    df_prev = df_prev.drop_duplicates(subset=["user_id", "video_item_id"], keep="first")
 
     if df.empty:
         st.warning("No data found for selected date.")

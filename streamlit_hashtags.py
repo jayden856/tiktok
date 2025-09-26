@@ -53,11 +53,13 @@ def show_hashtags():
     # Query hashtags for selected date
     query = f"SELECT * FROM hashtags WHERE crawl_date = '{selected_date}'"
     df = pd.read_sql(query, conn)
+    df = df.drop_duplicates(subset=["hashtag_id", "hashtag_name"])
 
     # Query hashtags for previous day
     prev_date = selected_date - datetime.timedelta(days=1)
     query_prev = f"SELECT * FROM hashtags WHERE crawl_date = '{prev_date}'"
     df_prev = pd.read_sql(query_prev, conn)
+    df_prev = df_prev.drop_duplicates(subset=["hashtag_id", "hashtag_name"])
     conn.close()
 
     if df.empty:
