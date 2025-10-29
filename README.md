@@ -308,6 +308,217 @@ If you encounter issues, check:
 
 ---
 
+## 🌐 Streamlit Dashboard Visualization
+
+This project includes interactive dashboards built with Streamlit to visualize the scraped TikTok data.
+
+### Dashboard Features
+
+The dashboard consists of three main sections accessible via tabs:
+
+1. **Creators Dashboard** (`streamlit_creators.py`)
+   - Overall metrics and KPIs for trending creators
+   - Top 20 creators by followers
+   - Top 20 videos by play count
+   - Filter videos by category
+   - Full data table with advanced filters
+
+2. **Posts Dashboard** (`streamlit_posts.py`)
+   - Overall video metrics (total plays, likes, engagement rate)
+   - Average metrics by genre with charts
+   - Engagement rate analysis
+   - Top videos and creators combined ranking
+   - Correlation scatter plots
+   - Interactive filters
+
+3. **Hashtags Dashboard** (`streamlit_hashtags.py`)
+   - Overall hashtag metrics
+   - Top 20 hashtags by views
+   - Top 20 hashtags by post count
+   - Filter by industry
+   - Full dataset display
+
+### Running Locally
+
+To run the dashboard on your local machine:
+
+1. Make sure all dependencies are installed:
+```bash
+pip install -r requirements.txt
+```
+
+2. Run the Streamlit app:
+```bash
+streamlit run app.py
+```
+
+3. Open your browser to `http://localhost:8501`
+
+### 🚀 Deploy to Streamlit Share (Cloud Hosting)
+
+Share your dashboard publicly using Streamlit Share - it's **FREE**!
+
+#### Prerequisites
+
+1. A GitHub account
+2. Your code pushed to a GitHub repository
+3. A Streamlit Share account (free, sign up with GitHub)
+
+#### Step-by-Step Deployment Guide
+
+##### Step 1: Prepare Your Repository
+
+1. **Ensure these files are in your repository:**
+   - `app.py` (main application file)
+   - `streamlit_creators.py`
+   - `streamlit_posts.py`
+   - `streamlit_hashtags.py`
+   - `requirements.txt` (dependencies list)
+   - `database/tiktokdb.db` (your SQLite database)
+   - `image/tiktok.png` (app icon)
+
+2. **Update database path in Streamlit files:**
+
+   Since Streamlit Share runs on Linux, you need to update the database path in all three Streamlit files to use a relative path:
+
+   **In `streamlit_creators.py`, `streamlit_posts.py`, and `streamlit_hashtags.py`:**
+   
+   Change:
+   ```python
+   db_path = r"C:\Users\USER\Documents\Tunetouch\Code\Tiktok\testing\database\tiktokdb.db"
+   ```
+   
+   To:
+   ```python
+   import os
+   db_path = os.path.join(os.path.dirname(__file__), "database", "tiktokdb.db")
+   ```
+
+3. **Commit and push to GitHub:**
+   ```bash
+   git add .
+   git commit -m "Prepare for Streamlit Share deployment"
+   git push origin main
+   ```
+
+##### Step 2: Deploy on Streamlit Share
+
+1. **Go to** [https://share.streamlit.io/](https://share.streamlit.io/)
+
+2. **Sign in** with your GitHub account
+
+3. **Click "New app"** button
+
+4. **Fill in the deployment form:**
+   - **Repository**: Select your GitHub repository (e.g., `username/tiktok-testing`)
+   - **Branch**: `main` (or your default branch)
+   - **Main file path**: `app.py`
+   - **App URL** (optional): Choose a custom subdomain
+
+5. **Click "Deploy!"**
+
+6. **Wait for deployment** (usually takes 2-5 minutes)
+   - Streamlit Share will:
+     - Clone your repository
+     - Install dependencies from `requirements.txt`
+     - Launch your app
+
+7. **Access your app!** 
+   - Your app URL will be something like: `https://your-app-name.streamlit.app`
+   - Share this link with anyone!
+
+##### Step 3: Update Your App
+
+Whenever you push changes to your GitHub repository:
+
+```bash
+git add .
+git commit -m "Update dashboard"
+git push origin main
+```
+
+Streamlit Share will **automatically redeploy** your app with the latest changes!
+
+#### Important Notes for Deployment
+
+⚠️ **Database Considerations:**
+- Streamlit Share apps are **read-only** for the file system
+- You can include your SQLite database in the repository, but it won't be updated when you run the scraper
+- For production use, consider:
+  - **Option 1**: Manually run scraper locally, commit updated database, and push to GitHub
+  - **Option 2**: Use a cloud database (PostgreSQL, MySQL, etc.) instead of SQLite
+  - **Option 3**: Use Streamlit's secrets management for database connection strings
+
+⚠️ **File Size Limits:**
+- GitHub repositories have file size limits (100 MB per file)
+- If your database is too large, consider using Git LFS or a cloud database
+
+⚠️ **Privacy:**
+- Public repositories = public app (anyone can access)
+- Private repositories = you control access (requires Streamlit Teams plan for private apps)
+
+#### Managing Secrets (Optional)
+
+If you need to store sensitive information (API keys, database credentials):
+
+1. **In Streamlit Share dashboard**, click on your app
+2. Go to **Settings** > **Secrets**
+3. Add your secrets in TOML format:
+   ```toml
+   [database]
+   connection_string = "your-database-url"
+   
+   [api]
+   tiktok_api_key = "your-api-key"
+   ```
+
+4. **Access secrets in your code:**
+   ```python
+   import streamlit as st
+   
+   db_connection = st.secrets["database"]["connection_string"]
+   api_key = st.secrets["api"]["tiktok_api_key"]
+   ```
+
+#### Troubleshooting Deployment
+
+**Problem: App won't start**
+- Check the logs in Streamlit Share dashboard
+- Verify `requirements.txt` has all necessary packages
+- Ensure file paths are relative, not absolute
+
+**Problem: Database not found**
+- Verify `database/tiktokdb.db` is committed to repository
+- Check file paths use forward slashes `/` or `os.path.join()`
+
+**Problem: Missing dependencies**
+- Add all required packages to `requirements.txt`
+- Include version numbers for stability
+
+**Problem: App runs locally but not on Streamlit Share**
+- Check for Windows-specific code (use `os.path` instead of hardcoded paths)
+- Verify all imports are available in `requirements.txt`
+
+### 📊 Updating Dashboard Data
+
+To keep your dashboard data fresh:
+
+1. **Run the scraper** locally:
+   ```bash
+   python script.py
+   ```
+
+2. **Commit the updated database**:
+   ```bash
+   git add database/tiktokdb.db
+   git commit -m "Update TikTok data - $(date +%Y-%m-%d)"
+   git push origin main
+   ```
+
+3. **Streamlit Share automatically redeploys** with new data!
+
+---
+
 ## 📄 License
 
 This project is for educational and research purposes only.
